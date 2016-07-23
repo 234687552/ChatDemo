@@ -40,7 +40,7 @@ public class LoginActivity extends AppCompatActivity {
 
         EMOptions options = new EMOptions();
         // 默认添加好友时，true是不需要验证的，改成需要验证
-        options.setAcceptInvitationAlways(true);
+        options.setAcceptInvitationAlways(false);
         //取消自动登录
         options.setAutoLogin(false);
         //初始化

@@ -2,8 +2,10 @@ package com.example.administrator.chatdemo;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -14,13 +16,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.hyphenate.EMCallBack;
+import com.hyphenate.EMConnectionListener;
 import com.hyphenate.EMContactListener;
+import com.hyphenate.EMError;
 import com.hyphenate.EMMessageListener;
-import com.hyphenate.chat.EMChatManager;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMMessage;
-import com.hyphenate.chat.EMOptions;
+import com.hyphenate.chat.EMTextMessageBody;
 import com.hyphenate.exceptions.HyphenateException;
+import com.hyphenate.util.NetUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,14 +34,18 @@ import java.util.List;
  */
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
-    private TextView userName;
+    private TextView myName;
     private EditText friendName;
-    private ListView friendList;
-    private ArrayAdapter<String> friendAdapter;
-    private List<String> friends = new ArrayList<String>();
+    private ListView contentList;
+    private ArrayAdapter<String> contentAdapter;
+    private List<String> contents = new ArrayList<String>();
+
+    private EditText toUserName;
+    private EditText content;
+
     private MyMessageListener msgListener;
     private MyContactListener contactListener;
-
+    private MyEMConnectionListener emConnectionListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,32 +55,52 @@ public class MainActivity extends Activity {
     }
 
     private void init() {
-        userName = (TextView) findViewById(R.id.user_name);
-        userName.setText(EMClient.getInstance().getCurrentUser());
+        myName = (TextView) findViewById(R.id.my_name);
+        myName.setText(EMClient.getInstance().getCurrentUser());
         friendName = (EditText) findViewById(R.id.friend_name);
-        friendList = (ListView) findViewById(R.id.friend_list);
+        contentList = (ListView) findViewById(R.id.content_list);
+        toUserName = (EditText) findViewById(R.id.toUserName);
+        content = (EditText) findViewById(R.id.content);
         //设置信息监听器
         msgListener = new MyMessageListener();
         EMClient.getInstance().chatManager().addMessageListener(msgListener);
         //设置好友监听器
         contactListener = new MyContactListener();
         EMClient.getInstance().contactManager().setContactListener(contactListener);
+        //注册一个监听连接状态的listener
+        emConnectionListener=new MyEMConnectionListener();
+        EMClient.getInstance().addConnectionListener(emConnectionListener);
         //获取好友列表
         getFriends();
+        //对话列表
+        contentAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, contents);
+        contentList.setAdapter(contentAdapter);
     }
 
-    @Override
-    protected void onDestroy() {
-        EMClient.getInstance().contactManager().removeContactListener(contactListener);
-        EMClient.getInstance().chatManager().removeMessageListener(msgListener);
-        super.onDestroy();
+    private void refreshContent() {
+        contentAdapter.notifyDataSetChanged();
+    }
+
+    /*
+    发送按钮
+     */
+    public void send(View v) {
+        String userName = toUserName.getText().toString().trim();
+        String contentText = content.getText().toString().trim();
+        if (!userName.equals(myName.getText())&&!TextUtils.isEmpty(userName) && !TextUtils.isEmpty(contentText)) {
+            //创建一条文本消息，content为消息文字内容，userName为对方用户或者群聊的id，后文皆是如此
+            EMMessage message = EMMessage.createTxtSendMessage(contentText, userName);
+            //发送消息
+            EMClient.getInstance().chatManager().sendMessage(message);
+            contents.add(myName.getText() + ":" + contentText);
+            refreshContent();
+        }
     }
 
     /*
      退出
      */
     public void logout(View view) {
-
         //此方法为异步方法
         EMClient.getInstance().logout(true, new EMCallBack() {
             @Override
@@ -136,15 +164,6 @@ public class MainActivity extends Activity {
 
     //获取好友列表
     public void getFriends() {
-        try {
-            friends.clear();
-            friends = EMClient.getInstance().contactManager().getAllContactsFromServer();
-            friendAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, friends);
-            friendList.setAdapter(friendAdapter);
-            Log.w(TAG, "getFriends: " + friends.size());
-        } catch (HyphenateException e) {
-            e.printStackTrace();
-        }
     }
 
     /*
@@ -158,7 +177,8 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(MainActivity.this, ("收到消息" + messages), Toast.LENGTH_SHORT).show();
+                    contents.add(messages.get(0).getUserName() + ":" + ((EMTextMessageBody)messages.get(0).getBody()).getMessage());
+                    refreshContent();
                 }
             });
         }
@@ -201,22 +221,23 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public void onContactRefused(String username) {
+        public void onContactRefused(final String username) {
             //好友请求被拒绝
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(MainActivity.this, ("好友请求被拒绝:" + username), Toast.LENGTH_SHORT).show();
+                }
+            });
         }
 
         @Override
         public void onContactInvited(final String username, final String reason) {
             //收到好友邀请
-            try {
-                EMClient.getInstance().contactManager().acceptInvitation(username);
-            } catch (HyphenateException e) {
-                e.printStackTrace();
-            }
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(MainActivity.this, ("收到好友邀请:" + username + "/原因:" + reason), Toast.LENGTH_SHORT).show();
+                    showAgreedDialog(username, reason);
                 }
             });
         }
@@ -231,5 +252,76 @@ public class MainActivity extends Activity {
         public void onContactAdded(String username) {
             //增加了联系人时回调此方法
         }
+    }
+
+    /*
+    监听登录情况
+     */
+    private class MyEMConnectionListener implements EMConnectionListener {
+        @Override
+        public void onConnected() {
+        }
+
+        @Override
+        public void onDisconnected(final int error) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    logout(getCurrentFocus());
+                    if (error == EMError.USER_REMOVED) {
+                        Toast.makeText(MainActivity.this, "显示帐号已经被移除", Toast.LENGTH_SHORT).show();
+                        // 显示帐号已经被移除
+                    } else if (error == EMError.USER_LOGIN_ANOTHER_DEVICE) {
+                        // 显示帐号在其他设备登录
+                        Toast.makeText(MainActivity.this, "显示帐号在其他设备登录", Toast.LENGTH_SHORT).show();
+                    } else {
+                        if (NetUtils.hasNetwork(MainActivity.this)) {
+                            //连接不到聊天服务器
+                            Toast.makeText(MainActivity.this, "连接不到聊天服务器", Toast.LENGTH_SHORT).show();
+                        } else {
+                            //当前网络不可用，请检查网络设置
+                            Toast.makeText(MainActivity.this, "当前网络不可用，请检查网络设置", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    //好友申请提示dialog
+    private void showAgreedDialog(final String username, String reason) {
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("应用提示")
+                .setMessage(
+                        "用户 " + username + " 想要添加您为好友，是否同意？\n" + "验证信息：" + reason)
+                .setPositiveButton("同意", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        try {
+                            EMClient.getInstance().contactManager().acceptInvitation(username);
+                            dialog.dismiss();
+                        } catch (HyphenateException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                })
+                .setNegativeButton("拒绝", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        try {
+                            EMClient.getInstance().contactManager().declineInvitation(username);
+                            dialog.dismiss();
+                        } catch (HyphenateException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        EMClient.getInstance().contactManager().removeContactListener(contactListener);
+        EMClient.getInstance().chatManager().removeMessageListener(msgListener);
+        EMClient.getInstance().removeConnectionListener(emConnectionListener);
+        super.onDestroy();
     }
 }
