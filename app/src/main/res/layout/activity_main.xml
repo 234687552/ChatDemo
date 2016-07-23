@@ -15,8 +15,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
         <Button
+            android:id="@+id/logout_btn"
             android:layout_gravity="right"
-            android:onClick="logout"
             android:text="退出"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />

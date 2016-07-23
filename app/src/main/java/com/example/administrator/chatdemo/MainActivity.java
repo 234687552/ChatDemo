@@ -10,6 +10,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -36,6 +37,9 @@ public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
     private TextView myName;
     private EditText friendName;
+    private Button logoutBtn;
+
+
     private ListView contentList;
     private ArrayAdapter<String> contentAdapter;
     private List<String> contents = new ArrayList<String>();
@@ -61,6 +65,14 @@ public class MainActivity extends Activity {
         contentList = (ListView) findViewById(R.id.content_list);
         toUserName = (EditText) findViewById(R.id.toUserName);
         content = (EditText) findViewById(R.id.content);
+        logoutBtn = (Button) findViewById(R.id.logout_btn);
+        //退出
+        logoutBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                logout();
+            }
+        });
         //设置信息监听器
         msgListener = new MyMessageListener();
         EMClient.getInstance().chatManager().addMessageListener(msgListener);
@@ -68,7 +80,7 @@ public class MainActivity extends Activity {
         contactListener = new MyContactListener();
         EMClient.getInstance().contactManager().setContactListener(contactListener);
         //注册一个监听连接状态的listener
-        emConnectionListener=new MyEMConnectionListener();
+        emConnectionListener = new MyEMConnectionListener();
         EMClient.getInstance().addConnectionListener(emConnectionListener);
         //获取好友列表
         getFriends();
@@ -87,7 +99,7 @@ public class MainActivity extends Activity {
     public void send(View v) {
         String userName = toUserName.getText().toString().trim();
         String contentText = content.getText().toString().trim();
-        if (!userName.equals(myName.getText())&&!TextUtils.isEmpty(userName) && !TextUtils.isEmpty(contentText)) {
+        if (!userName.equals(myName.getText()) && !TextUtils.isEmpty(userName) && !TextUtils.isEmpty(contentText)) {
             //创建一条文本消息，content为消息文字内容，userName为对方用户或者群聊的id，后文皆是如此
             EMMessage message = EMMessage.createTxtSendMessage(contentText, userName);
             //发送消息
@@ -100,27 +112,27 @@ public class MainActivity extends Activity {
     /*
      退出
      */
-    public void logout(View view) {
-        //此方法为异步方法
-        EMClient.getInstance().logout(true, new EMCallBack() {
+    public void logout() {
+        //我也不知道第一个参数设true为什么意义；参考demo设置为false
+        EMClient.getInstance().logout(false, new EMCallBack() {
             @Override
             public void onSuccess() {
-                // TODO Auto-generated method stub
                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                 startActivity(intent);
                 finish();
             }
 
             @Override
-            public void onProgress(int progress, String status) {
-                // TODO Auto-generated method stub
+            public void onError(int i, String s) {
+
             }
 
             @Override
-            public void onError(int code, String message) {
-                // TODO Auto-generated method stub
+            public void onProgress(int i, String s) {
+
             }
         });
+
     }
 
     /*
@@ -177,7 +189,7 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    contents.add(messages.get(0).getUserName() + ":" + ((EMTextMessageBody)messages.get(0).getBody()).getMessage());
+                    contents.add(messages.get(0).getUserName() + ":" + ((EMTextMessageBody) messages.get(0).getBody()).getMessage());
                     refreshContent();
                 }
             });
@@ -264,16 +276,16 @@ public class MainActivity extends Activity {
 
         @Override
         public void onDisconnected(final int error) {
+            logout();
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    logout(getCurrentFocus());
                     if (error == EMError.USER_REMOVED) {
-                        Toast.makeText(MainActivity.this, "显示帐号已经被移除", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "帐号已经被移除", Toast.LENGTH_SHORT).show();
                         // 显示帐号已经被移除
                     } else if (error == EMError.USER_LOGIN_ANOTHER_DEVICE) {
                         // 显示帐号在其他设备登录
-                        Toast.makeText(MainActivity.this, "显示帐号在其他设备登录", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "帐号在其他设备登录", Toast.LENGTH_SHORT).show();
                     } else {
                         if (NetUtils.hasNetwork(MainActivity.this)) {
                             //连接不到聊天服务器
