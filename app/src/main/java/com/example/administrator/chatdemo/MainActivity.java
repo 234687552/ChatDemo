@@ -1,14 +1,15 @@
 package com.example.administrator.chatdemo;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Message;
+import android.support.v4.app.FragmentActivity;
 import android.support.v7.app.AlertDialog;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -21,11 +22,19 @@ import com.hyphenate.EMConnectionListener;
 import com.hyphenate.EMContactListener;
 import com.hyphenate.EMError;
 import com.hyphenate.EMMessageListener;
+import com.hyphenate.EMValueCallBack;
+import com.hyphenate.chat.EMChatManager;
 import com.hyphenate.chat.EMClient;
+import com.hyphenate.chat.EMConversation;
+import com.hyphenate.chat.EMGroup;
+import com.hyphenate.chat.EMGroupManager;
 import com.hyphenate.chat.EMMessage;
-import com.hyphenate.chat.EMTextMessageBody;
+import com.hyphenate.easeui.EaseConstant;
 import com.hyphenate.exceptions.HyphenateException;
 import com.hyphenate.util.NetUtils;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,19 +42,21 @@ import java.util.List;
 /**
  * Created by Administrator on 2016/7/22 0022.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends FragmentActivity {
     private static final String TAG = "MainActivity";
     private TextView myName;
     private EditText friendName;
     private Button logoutBtn;
 
+    private ListView groupList;
+    private GroupAdapter groupAdapter;
+    private List<EMGroup> groups;
+    boolean progressDiss=false;
 
-    private ListView contentList;
-    private ArrayAdapter<String> contentAdapter;
-    private List<String> contents = new ArrayList<String>();
+    private ListView friendList;
+    private ArrayAdapter<String> friendAdapter;
+    private List<String> friends = new ArrayList<String>();
 
-    private EditText toUserName;
-    private EditText content;
 
     private MyMessageListener msgListener;
     private MyContactListener contactListener;
@@ -62,11 +73,36 @@ public class MainActivity extends Activity {
         myName = (TextView) findViewById(R.id.my_name);
         myName.setText(EMClient.getInstance().getCurrentUser());
         friendName = (EditText) findViewById(R.id.friend_name);
-        contentList = (ListView) findViewById(R.id.content_list);
-        toUserName = (EditText) findViewById(R.id.toUserName);
-        content = (EditText) findViewById(R.id.content);
+        friendList = (ListView) findViewById(R.id.friend_list);
         logoutBtn = (Button) findViewById(R.id.logout_btn);
-        //退出
+        groupList = (ListView) findViewById(R.id.group_list);
+
+        //对话列表
+        friends = new ArrayList<String>();
+        friendAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, friends);
+        friendList.setAdapter(friendAdapter);
+        friendList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                beginTalk(EaseConstant.CHATTYPE_SINGLE, friends.get(position));
+            }
+        });
+
+        //群聊列表
+        groups = EMClient.getInstance().groupManager().getAllGroups();//本地获取
+        groupAdapter = new GroupAdapter(this, 1, groups);
+        groupList.setAdapter(groupAdapter);
+        groupList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                beginTalk(EaseConstant.CHATTYPE_GROUP, groupAdapter.getItem(position).getGroupId());
+            }
+        });
+
+        //聊天记录
+//        EMConversation conversation = EMClient.getInstance().chatManager().getConversation(username);
+
+        //退出监听
         logoutBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -82,32 +118,49 @@ public class MainActivity extends Activity {
         //注册一个监听连接状态的listener
         emConnectionListener = new MyEMConnectionListener();
         EMClient.getInstance().addConnectionListener(emConnectionListener);
-        //获取好友列表
-        getFriends();
-        //对话列表
-        contentAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, contents);
-        contentList.setAdapter(contentAdapter);
+
+
     }
 
-    private void refreshContent() {
-        contentAdapter.notifyDataSetChanged();
+
+    public void beginTalk(int chatType, String userName) {
+        Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+        intent.putExtra("userName", userName);
+        intent.putExtra("chatType", chatType);
+        startActivity(intent);
     }
 
-    /*
-    发送按钮
-     */
-    public void send(View v) {
-        String userName = toUserName.getText().toString().trim();
-        String contentText = content.getText().toString().trim();
-        if (!userName.equals(myName.getText()) && !TextUtils.isEmpty(userName) && !TextUtils.isEmpty(contentText)) {
-            //创建一条文本消息，content为消息文字内容，userName为对方用户或者群聊的id，后文皆是如此
-            EMMessage message = EMMessage.createTxtSendMessage(contentText, userName);
-            //发送消息
-            EMClient.getInstance().chatManager().sendMessage(message);
-            contents.add(myName.getText() + ":" + contentText);
-            refreshContent();
-        }
-    }
+
+    //创建一条发送TextMsg,属isProjectDetail为true的则是专门携带 project 内容携带者。
+//    private void projectDetailMsg(int projectId) {
+//        // toUserName为对方用户或者群聊的id，
+//        EMMessage message = EMMessage.createTxtSendMessage("该条携带project内容", String.valueOf(projectId));
+//        message.setChatType(EMMessage.ChatType.GroupChat);
+//        //区别这条信息是信息携带者。
+//        message.setAttribute("isProjectDetail", true);
+//        message.getBooleanAttribute("isProjectDetail", false);
+//
+//        //携带project的基本信息：isfinish，starttime type
+//        message.setAttribute("project_isFinish",true);
+//        message.setAttribute("project_type","work");
+//        //通过jsonObject来携带所有的ProjectLists；
+//        JSONObject jsonObject=new JSONObject();
+//        List<String > lists=new ArrayList<String >();
+//        try {
+//            jsonObject.putOpt("lists",lists);
+//        } catch (JSONException e) {
+//            e.printStackTrace();
+//        }
+//        message.setAttribute("jsonLists",jsonObject);
+//
+//        //上传数据到DB方式
+//        List<EMMessage> messages=new ArrayList<EMMessage>();
+//        messages.add(message);
+//        EMClient.getInstance().chatManager().importMessages(messages);
+//        //发送message到db方式   send的方式 怎么更新？通过判断按照最新时间的一条？并不能获取到以前历史信息。
+//        EMClient.getInstance().chatManager().sendMessage(message);
+//    }
+
 
     /*
      退出
@@ -124,15 +177,12 @@ public class MainActivity extends Activity {
 
             @Override
             public void onError(int i, String s) {
-
             }
 
             @Override
             public void onProgress(int i, String s) {
-
             }
         });
-
     }
 
     /*
@@ -174,25 +224,94 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    //获取好友列表
-    public void getFriends() {
+    //获取好友列表和群聊
+    public void refreshFriendsGroups() {
+
+        final ProgressDialog progressDialog;
+        progressDialog = new ProgressDialog(this);
+        String stri = "加载朋友和群聊...";
+        progressDialog.setMessage(stri);
+        progressDialog.setCanceledOnTouchOutside(false);
+        progressDialog.show();
+
+        //异步获取朋友列表
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    friends.clear();
+                    friends.addAll(EMClient.getInstance().contactManager().getAllContactsFromServer());
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (progressDiss) {
+                                progressDialog.dismiss();
+                                progressDiss = false;
+                            } else {
+                                progressDiss = true;
+                            }
+                            friendAdapter.notifyDataSetChanged();
+                        }
+                    });
+
+                } catch (final HyphenateException e) {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            progressDialog.dismiss();
+                            progressDiss=false;
+                            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        }).start();
+
+        //异步获取群聊列表
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    EMClient.getInstance().groupManager().getJoinedGroupsFromServer();//从服务器下载到本地db。
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (progressDiss) {
+                                progressDialog.dismiss();
+                                progressDiss = false;
+                            } else {
+                                progressDiss = true;
+                            }
+                            groups = EMClient.getInstance().groupManager().getAllGroups();
+                            groupAdapter = new GroupAdapter(MainActivity.this, 1, groups);
+                            groupList.setAdapter(groupAdapter);
+                            groupAdapter.notifyDataSetChanged();
+                        }
+                    });
+                } catch (final HyphenateException e) {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            progressDialog.dismiss();
+                            progressDiss=false;
+                            Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+
+            }
+        }).start();
+
     }
 
     /*
     监听好友信息
      */
     private class MyMessageListener implements EMMessageListener {
-
         @Override
         public void onMessageReceived(final List<EMMessage> messages) {
             //收到消息
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    contents.add(messages.get(0).getUserName() + ":" + ((EMTextMessageBody) messages.get(0).getBody()).getMessage());
-                    refreshContent();
+            for (EMMessage message : messages) {
+                if (message.getChatType() == EMMessage.ChatType.GroupChat && message.getFrom() == "project_data") {
+                    // TODO: 2016/7/25 0025
                 }
-            });
+            }
         }
 
         @Override
@@ -223,11 +342,10 @@ public class MainActivity extends Activity {
         @Override
         public void onContactAgreed(final String username) {
             //好友请求被同意
-
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(MainActivity.this, ("好友请求被同意:" + username), Toast.LENGTH_SHORT).show();
+                    refreshFriendsGroups();
                 }
             });
         }
@@ -263,6 +381,7 @@ public class MainActivity extends Activity {
         @Override
         public void onContactAdded(String username) {
             //增加了联系人时回调此方法
+            refreshFriendsGroups();
         }
     }
 
@@ -272,24 +391,34 @@ public class MainActivity extends Activity {
     private class MyEMConnectionListener implements EMConnectionListener {
         @Override
         public void onConnected() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    //获取好友列表并更新群聊
+                    refreshFriendsGroups();
+
+                }
+            });
         }
 
         @Override
         public void onDisconnected(final int error) {
-            logout();
+
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     if (error == EMError.USER_REMOVED) {
-                        Toast.makeText(MainActivity.this, "帐号已经被移除", Toast.LENGTH_SHORT).show();
                         // 显示帐号已经被移除
+                        logout();
+                        Toast.makeText(MainActivity.this, "帐号已经被移除", Toast.LENGTH_SHORT).show();
                     } else if (error == EMError.USER_LOGIN_ANOTHER_DEVICE) {
                         // 显示帐号在其他设备登录
+                        logout();
                         Toast.makeText(MainActivity.this, "帐号在其他设备登录", Toast.LENGTH_SHORT).show();
                     } else {
                         if (NetUtils.hasNetwork(MainActivity.this)) {
                             //连接不到聊天服务器
-                            Toast.makeText(MainActivity.this, "连接不到聊天服务器", Toast.LENGTH_SHORT).show();
+//                            Toast.makeText(MainActivity.this, "连接不到聊天服务器", Toast.LENGTH_SHORT).show();
                         } else {
                             //当前网络不可用，请检查网络设置
                             Toast.makeText(MainActivity.this, "当前网络不可用，请检查网络设置", Toast.LENGTH_SHORT).show();
@@ -309,9 +438,11 @@ public class MainActivity extends Activity {
                 .setPositiveButton("同意", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+
                         try {
                             EMClient.getInstance().contactManager().acceptInvitation(username);
                             dialog.dismiss();
+                            refreshFriendsGroups();
                         } catch (HyphenateException e) {
                             e.printStackTrace();
                         }

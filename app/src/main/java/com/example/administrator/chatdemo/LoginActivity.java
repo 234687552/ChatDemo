@@ -13,6 +13,7 @@ import android.widget.Toast;
 import com.hyphenate.EMCallBack;
 import com.hyphenate.chat.EMClient;
 import com.hyphenate.chat.EMOptions;
+import com.hyphenate.easeui.controller.EaseUI;
 import com.hyphenate.exceptions.HyphenateException;
 
 public class LoginActivity extends AppCompatActivity {
@@ -38,19 +39,30 @@ public class LoginActivity extends AppCompatActivity {
         inputAcount = (EditText) findViewById(R.id.input_account);
         inputPassword = (EditText) findViewById(R.id.input_passwrod);
 
+        /*
+        SDK的初始化
+         */
         EMOptions options = new EMOptions();
         // 默认添加好友时，true是不需要验证的，改成需要验证
         options.setAcceptInvitationAlways(false);
-        //取消自动登录
-        options.setAutoLogin(false);
+        //false取消自动登录
+        options.setAutoLogin(true);
         //初始化
         EMClient.getInstance().init(LoginActivity.this, options);
         //在做打包混淆时，关闭debug模式，避免消耗不必要的资源
         EMClient.getInstance().setDebugMode(false);
 
+        /*
+        聊天Fragment的初始化
+         */
+        EMOptions emOptions = new EMOptions();
+        // 默认添加好友时，是不需要验证的，改成需要验证
+        emOptions.setAcceptInvitationAlways(false);
+        EaseUI.getInstance().init(LoginActivity.this, emOptions);
+
         if (EMClient.getInstance().isLoggedInBefore()){
             startActivity(new Intent(LoginActivity.this,MainActivity.class));
-            return;
+            finish();
         }
     }
     /*

@@ -1,65 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
     <LinearLayout
-        android:orientation="horizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
         <TextView
-            android:text="当前用户："
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:text="当前用户：" />
+
         <TextView
             android:id="@+id/my_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
         <Button
             android:id="@+id/logout_btn"
-            android:layout_gravity="right"
-            android:text="退出"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </LinearLayout>
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:text="退出" />
+
         <EditText
             android:id="@+id/friend_name"
-            android:hint="好友名字"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="输入好友名字" />
+
         <Button
-            android:onClick="addFriend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_gravity="right"
-            android:text="添加好友"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </LinearLayout>
-    <LinearLayout
-        android:orientation="vertical"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-        <EditText
-            android:id="@+id/toUserName"
-            android:hint="输入对方名字"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-        <EditText
-            android:id="@+id/content"
-            android:hint="输入对话内容"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-        <Button
-            android:onClick="send"
-            android:text="Send"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:onClick="addFriend"
+            android:text="添加好友" />
     </LinearLayout>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#eaeaea"
+        android:gravity="center"
+        android:text="好友列表" />
+
     <ListView
-        android:id="@+id/content_list"
+        android:id="@+id/friend_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"></ListView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#eaeaea"
+        android:gravity="center"
+        android:text="群聊列表" />
+
+    <ListView
+        android:id="@+id/group_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"></ListView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#eaeaea"
+        android:gravity="center"
+        android:text="单聊列表" />
+    <ListView
+        android:id="@+id/chat_list"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"></ListView>
 

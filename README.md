@@ -27,3 +27,14 @@
 ### 心得总结：
 	
 	依赖包中 不可重复依赖或者 上下含有关系。 如support-v7含有v4。
+	
+二：adapter.notifyDataSetChanged()没有反应
+=====
+	可能原因：
+		datalist不是原来的地址，主要是通过datalist=***导致改变地址改变，
+	解决办法：
+		datalist.clear();
+		datalist.addall(***);
+		adapter.notifyDataSetChanged();
+	还是不行的话：
+		datalist=***;adapter=new Adapter();listview.setadapter;adapter.notifyDataSetChanged();
