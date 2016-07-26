@@ -29,6 +29,7 @@ import com.hyphenate.chat.EMConversation;
 import com.hyphenate.chat.EMGroup;
 import com.hyphenate.chat.EMGroupManager;
 import com.hyphenate.chat.EMMessage;
+import com.hyphenate.chat.EMTextMessageBody;
 import com.hyphenate.easeui.EaseConstant;
 import com.hyphenate.exceptions.HyphenateException;
 import com.hyphenate.util.NetUtils;
@@ -95,6 +96,7 @@ public class MainActivity extends FragmentActivity {
         groupList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                projectDetailMsg(groups.get(position).getGroupId());
                 beginTalk(EaseConstant.CHATTYPE_GROUP, groupAdapter.getItem(position).getGroupId());
             }
         });
@@ -132,34 +134,37 @@ public class MainActivity extends FragmentActivity {
 
 
     //创建一条发送TextMsg,属isProjectDetail为true的则是专门携带 project 内容携带者。
-//    private void projectDetailMsg(int projectId) {
-//        // toUserName为对方用户或者群聊的id，
-//        EMMessage message = EMMessage.createTxtSendMessage("该条携带project内容", String.valueOf(projectId));
-//        message.setChatType(EMMessage.ChatType.GroupChat);
-//        //区别这条信息是信息携带者。
-//        message.setAttribute("isProjectDetail", true);
-//        message.getBooleanAttribute("isProjectDetail", false);
-//
-//        //携带project的基本信息：isfinish，starttime type
-//        message.setAttribute("project_isFinish",true);
-//        message.setAttribute("project_type","work");
-//        //通过jsonObject来携带所有的ProjectLists；
-//        JSONObject jsonObject=new JSONObject();
-//        List<String > lists=new ArrayList<String >();
-//        try {
-//            jsonObject.putOpt("lists",lists);
-//        } catch (JSONException e) {
-//            e.printStackTrace();
-//        }
-//        message.setAttribute("jsonLists",jsonObject);
-//
-//        //上传数据到DB方式
-//        List<EMMessage> messages=new ArrayList<EMMessage>();
-//        messages.add(message);
+    private void projectDetailMsg(String  projectId) {
+        // toUserName为对方用户或者群聊的id，
+        EMMessage message = EMMessage.createTxtSendMessage("该条携带project内容", projectId);
+        message.setReceipt(projectId);
+        message.setChatType(EMMessage.ChatType.GroupChat);
+        //区别这条信息是信息携带者。
+        message.setAttribute("isProjectDetail", true);
+        message.getBooleanAttribute("isProjectDetail", false);
+
+        //携带project的基本信息：isfinish，starttime type
+        message.setAttribute("project_isFinish",true);
+        message.setAttribute("project_type", "work");
+        //通过jsonObject来携带所有的ProjectLists；
+        JSONObject jsonObject=new JSONObject();
+        List<String > lists=new ArrayList<String >();
+        lists.add("item1");
+        lists.add("item2");
+        lists.add("item3");
+        try {
+            jsonObject.putOpt("lists", lists);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        message.setAttribute("jsonLists", jsonObject);
+
+        //上传数据到DB方式
+        List<EMMessage> messages=new ArrayList<EMMessage>();
 //        EMClient.getInstance().chatManager().importMessages(messages);
-//        //发送message到db方式   send的方式 怎么更新？通过判断按照最新时间的一条？并不能获取到以前历史信息。
-//        EMClient.getInstance().chatManager().sendMessage(message);
-//    }
+        //发送message到db方式   send的方式 怎么更新？通过判断按照最新时间的一条？并不能获取到以前历史信息。
+        EMClient.getInstance().chatManager().sendMessage(message);
+    }
 
 
     /*
@@ -308,8 +313,13 @@ public class MainActivity extends FragmentActivity {
         public void onMessageReceived(final List<EMMessage> messages) {
             //收到消息
             for (EMMessage message : messages) {
-                if (message.getChatType() == EMMessage.ChatType.GroupChat && message.getFrom() == "project_data") {
+                if (message.getChatType() == EMMessage.ChatType.GroupChat && !message.getBooleanAttribute("isProjectDetail",false)) {
                     // TODO: 2016/7/25 0025
+                    try {
+                        Log.w(TAG,  message.getJSONObjectAttribute("jsonLists").toString() );
+                    } catch (HyphenateException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
@@ -391,10 +401,10 @@ public class MainActivity extends FragmentActivity {
     private class MyEMConnectionListener implements EMConnectionListener {
         @Override
         public void onConnected() {
+            //获取好友列表并更新群聊
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    //获取好友列表并更新群聊
                     refreshFriendsGroups();
 
                 }

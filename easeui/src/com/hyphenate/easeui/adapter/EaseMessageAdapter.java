@@ -39,6 +39,8 @@ import com.hyphenate.easeui.widget.chatrow.EaseChatRowVideo;
 import com.hyphenate.easeui.widget.chatrow.EaseChatRowVoice;
 import com.hyphenate.easeui.widget.chatrow.EaseCustomChatRowProvider;
 
+import java.util.List;
+
 public class EaseMessageAdapter extends BaseAdapter{
 
 	private final static String TAG = "msg";
@@ -94,7 +96,17 @@ public class EaseMessageAdapter extends BaseAdapter{
 		private void refreshList() {
 			// you should not call getAllMessages() in UI thread
 			// otherwise there is problem when refreshing UI and there is new message arrive
-			messages = (EMMessage[]) conversation.getAllMessages().toArray(new EMMessage[0]);
+
+			List<EMMessage> lists= conversation.getAllMessages();
+			for (int i = 0; i < lists.size(); i++) {
+				if (lists.get(i).getBooleanAttribute("isProjectDetail",false)){
+					lists.remove(i);
+					i--;
+				}
+			}
+			messages = (EMMessage[]) lists.toArray(new EMMessage[0]);
+
+//			messages=(EMMessage[]) conversation.getAllMessages().toArray(new EMMessage[0]);
 			conversation.markAllMessagesAsRead();
 			notifyDataSetChanged();
 		}
@@ -260,10 +272,8 @@ public class EaseMessageAdapter extends BaseAdapter{
 		if(convertView == null){
 			convertView = createChatRow(context, message, position);
 		}
-
 		//refresh ui with messages
 		((EaseChatRow)convertView).setUpView(message, position, itemClickListener);
-		
 		return convertView;
 	}
 

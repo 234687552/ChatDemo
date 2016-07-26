@@ -143,6 +143,10 @@ public class EaseChatFragment extends EaseBaseFragment implements EMMessageListe
 
         extendMenuItemClickListener = new MyItemClickListener();
         inputMenu = (EaseChatInputMenu) getView().findViewById(R.id.input_menu);
+        /*
+        修改部分1
+         */
+//        inputMenu.setVisibility(View.GONE);
         registerExtendMenuItem();
         // init input menu
         inputMenu.init(null);
@@ -180,6 +184,10 @@ public class EaseChatFragment extends EaseBaseFragment implements EMMessageListe
     }
 
     protected void setUpView() {
+        /*
+        修改部分2
+         */
+        hideTitleBar();
         titleBar.setTitle(toChatUsername);
         if (chatType == EaseConstant.CHATTYPE_SINGLE) {
             // set title

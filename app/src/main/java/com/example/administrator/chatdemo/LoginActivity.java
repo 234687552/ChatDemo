@@ -50,7 +50,7 @@ public class LoginActivity extends AppCompatActivity {
         //初始化
         EMClient.getInstance().init(LoginActivity.this, options);
         //在做打包混淆时，关闭debug模式，避免消耗不必要的资源
-        EMClient.getInstance().setDebugMode(false);
+        EMClient.getInstance().setDebugMode(true);
 
         /*
         聊天Fragment的初始化
